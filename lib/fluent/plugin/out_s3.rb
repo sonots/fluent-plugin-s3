@@ -98,6 +98,7 @@ module Fluent
     end
 
     def write(chunk)
+      @i ||= 0
       i = 0
       previous_path = nil
 
@@ -117,14 +118,20 @@ module Fluent
         end
 
         i += 1
+        puts "#{i} #{chunk.key}"
         previous_path = s3path
-      end while @bucket.objects[s3path].exists?
+      end # while @bucket.objects[s3path].exists?
 
       tmp = Tempfile.new("s3-")
       begin
         @compressor.compress(chunk, tmp)
         @bucket.objects[s3path].write(Pathname.new(tmp.path), {:content_type => @compressor.content_type,
                                                                :reduced_redundancy => @reduced_redundancy})
+        @i += 1
+        if (@i % 5) == 0
+          puts 'raise'
+          raise 'foo'
+        end
       ensure
         tmp.close(true) rescue nil
       end
