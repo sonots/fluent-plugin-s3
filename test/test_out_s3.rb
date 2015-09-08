@@ -336,6 +336,8 @@ class S3OutputTest < Test::Unit::TestCase
     d.run
   end
 
+  # ToDo: need to test hex_random does not change on retry, but it is difficult with
+  # the current fluentd test helper because it does not provide a way to run with the same chunks
   def test_write_with_custom_s3_object_key_format_containing_hex_random_placeholder
     # Assert content of event logs which are being sent to S3
     s3obj = flexmock(AWS::S3::S3Object)
@@ -361,7 +363,7 @@ class S3OutputTest < Test::Unit::TestCase
     s3obj_col = flexmock(AWS::S3::ObjectCollection)
     s3obj_col.should_receive(:[]).with(
       on { |key|
-        key =~ /.*.[0-9a-f]{5}.*/
+        key =~ /.*.[0-9a-f]{5}\.gz$/
       }).
       and_return {
         s3obj

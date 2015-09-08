@@ -70,6 +70,8 @@ module Fluent
           Time.now.utc.strftime(path)
         }
       end
+
+      @values_for_s3_object_chunk = {}
     end
 
     def start
@@ -109,14 +111,18 @@ module Fluent
 
       begin
         path = @path_slicer.call(@path)
+
+        @values_for_s3_object_chunk[chunk.key] ||= {
+          "hex_random" => hex_random,
+        }
         values_for_s3_object_key = {
           "path" => path,
           "time_slice" => chunk.key,
           "file_extension" => @compressor.ext,
           "index" => i,
           "uuid_flush" => uuid_random,
-          "hex_random" => hex_random,
-        }
+        }.merge!(@values_for_s3_object_chunk[chunk.key])
+
         s3path = @s3_object_key_format.gsub(%r(%{[^}]+})) { |expr|
           values_for_s3_object_key[expr[2...expr.size-1]]
         }
@@ -131,10 +137,12 @@ module Fluent
       tmp = Tempfile.new("s3-")
       begin
         @compressor.compress(chunk, tmp)
+        log.debug { "out_s3: trying to write {object_id:#{chunk.object_id},time_slice:#{chunk.key}} to s3://#{@s3_bucket}/#{s3path}" }
         @bucket.objects[s3path].write(Pathname.new(tmp.path), {:content_type => @compressor.content_type,
                                                                :reduced_redundancy => @reduced_redundancy,
                                                                :acl => @acl})
       ensure
+        @values_for_s3_object_chunk.delete(chunk.key)
         tmp.close(true) rescue nil
       end
     end
