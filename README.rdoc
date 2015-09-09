@@ -170,6 +170,8 @@ You can change key name by "message_key" option.
 To use cross-account access, you will need to create a bucket policy granting
 the specific access required. Refer to the {AWS documentation}[http://docs.aws.amazon.com/AmazonS3/latest/dev/example-walkthroughs-managing-access-example3.html] for examples.
 
+[overwrite] Overwrite already existing path. Default is false, which raises an error if a s3 object of the same path already exists.
+
 == IAM Policy
 
 The following is an example for a minimal IAM policy needed to write to an s3 bucket (matches my-s3bucket/logs, my-s3bucket-test, etc.).

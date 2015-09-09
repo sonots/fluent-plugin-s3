@@ -51,6 +51,7 @@ module Fluent
     config_param :storage_class, :string, :default => "STANDARD"
     config_param :format, :string, :default => 'out_file'
     config_param :acl, :string, :default => :private
+    config_param :overwrite, :bool, :default => false
 
     attr_reader :bucket
 
@@ -163,7 +164,12 @@ module Fluent
           values_for_s3_object_key[expr[2...expr.size-1]]
         }
         if (i > 0) && (s3path == previous_path)
-          raise "duplicated path is generated. use %{index} in s3_object_key_format: path = #{s3path}"
+          if @overwrite
+            log.warn "#{s3path} already exists, but will overwrite"
+            break
+          else
+            raise "duplicated path is generated. use %{index} in s3_object_key_format: path = #{s3path}"
+          end
         end
 
         i += 1
