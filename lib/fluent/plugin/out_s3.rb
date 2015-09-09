@@ -90,6 +90,7 @@ module Fluent
       end
 
       @storage_class = "REDUCED_REDUNDANCY" if @reduced_redundancy
+      @values_for_s3_object_chunk = {}
     end
 
     def start
@@ -152,13 +153,18 @@ module Fluent
 
       begin
         path = @path_slicer.call(@path)
+
+        @values_for_s3_object_chunk[chunk.key] ||= {
+          "uuid_chunk" => uuid_random,
+        }
         values_for_s3_object_key = {
           "path" => path,
           "time_slice" => chunk.key,
           "file_extension" => @compressor.ext,
           "index" => i,
           "uuid_flush" => uuid_random
-        }
+        }.merge!(@values_for_s3_object_chunk[chunk.key])
+
         s3path = @s3_object_key_format.gsub(%r(%{[^}]+})) { |expr|
           values_for_s3_object_key[expr[2...expr.size-1]]
         }
@@ -174,10 +180,12 @@ module Fluent
       begin
         @compressor.compress(chunk, tmp)
         tmp.rewind
+        log.debug { "out_s3: trying to write {object_id:#{chunk.object_id},time_slice:#{chunk.key}} to s3://#{@s3_bucket}/#{s3path}" }
         @bucket.object(s3path).put(:body => tmp,
                                    :content_type => @compressor.content_type,
                                    :storage_class => @storage_class)
       ensure
+        @values_for_s3_object_chunk.delete(chunk.key)
         tmp.close(true) rescue nil
       end
     end

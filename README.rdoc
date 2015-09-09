@@ -52,6 +52,7 @@ Simply use RubyGems:
 - %{index}
 - %{file_extension}
 - %{uuid_flush}
+- %{uuid_chunk}
 
 to decide keys dynamically.
 
@@ -60,6 +61,7 @@ to decide keys dynamically.
 %{index} is the sequential number starts from 0, increments when multiple files are uploaded to S3 in the same time slice.
 %{file_extention} is always "gz" for now.
 %{uuid_flush} a uuid that is replaced everytime the buffer will be flushed
+%{uuid_chunk} a uuid that is replaced for each buffer chunk, that is, not replaced on retry unlike `%{uuid_flush}`.
 
 The default format is "%{path}%{time_slice}_%{index}.%{file_extension}".
 
