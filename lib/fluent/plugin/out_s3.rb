@@ -163,7 +163,7 @@ module Fluent
       begin
         @compressor.compress(chunk, tmp)
         tmp.rewind
-        log.debug { "out_s3: write chunk: {key:#{chunk.key},tsuffix:#{tsuffix(chunk)}} to s3://#{@s3_bucket}/#{s3path}" }
+        log.debug { %[out_s3: write chunk: {key:"#{chunk.key}",tsuffix:"#{tsuffix(chunk)}",size:#{chunk.size}} to s3://#{@s3_bucket}/#{s3path}] }
 
         put_options = {:body => tmp, :content_type => @compressor.content_type, :storage_class => @storage_class}
         put_options[:server_side_encryption] = @use_server_side_encryption if @use_server_side_encryption
