@@ -194,11 +194,11 @@ module Fluent
       i = 0
       previous_path = nil
       begin
-        values_for_move_to["move_index"] = i
+        values_for_move_to["index"] = i
 
         move_to = expand_s3_object_key_format(@move_to, values_for_move_to)
         if (i > 0) && (move_to == previous_path)
-          raise "duplicated path is generated. use %{move_index} in move_to: path = #{move_to}"
+          raise "duplicated path is generated. use %{index} in move_to: path = #{move_to}"
         end
 
         i += 1
