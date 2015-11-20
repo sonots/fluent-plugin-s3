@@ -55,6 +55,7 @@ module Fluent
     config_param :acl, :string, :default => :private
     config_param :hex_random_length, :integer, :default => 4
     config_param :overwrite, :bool, :default => false
+    config_param :move_to, :string, :default => nil
 
     attr_reader :bucket
 
@@ -95,6 +96,10 @@ module Fluent
 
       if @hex_random_length > MAX_HEX_RANDOM_LENGTH
         raise ConfigError, "hex_random_length parameter must be less than or equal to #{MAX_HEX_RANDOM_LENGTH}"
+      end
+
+      if @move_to and @overwrite
+        raise ConfigError, "either of 'overwrite' or 'move_to' option can be specified."
       end
 
       @storage_class = "REDUCED_REDUNDANCY" if @reduced_redundancy
@@ -142,11 +147,11 @@ module Fluent
           "uuid_flush" => uuid_random,
         }.merge!(@values_for_s3_object_chunk[chunk.unique_id])
 
-        s3path = @s3_object_key_format.gsub(%r(%{[^}]+})) { |expr|
-          values_for_s3_object_key[expr[2...expr.size-1]]
-        }
+        s3path = expand_s3_object_key_format(@s3_object_key_format, values_for_s3_object_key)
         if (i > 0) && (s3path == previous_path)
-          if @overwrite
+          if @move_to
+            move(s3path, values_for_s3_object_key)
+          elsif @overwrite
             log.warn "#{s3path} already exists, but will overwrite"
             break
           else
@@ -176,6 +181,37 @@ module Fluent
     end
 
     private
+
+    def expand_s3_object_key_format(s3_object_key_format, values_for_s3_object_key)
+      s3_object_key_format.gsub(%r(%{[^}]+})) { |expr|
+        values_for_s3_object_key[expr[2...expr.size-1]]
+      }
+    end
+
+    def move(s3path, values_for_s3_object_key)
+      values_for_move_to = values_for_s3_object_key.dup
+
+      i = 0
+      previous_path = nil
+      begin
+        values_for_move_to["move_index"] = i
+
+        move_to = expand_s3_object_key_format(@move_to, values_for_move_to)
+        if (i > 0) && (move_to == previous_path)
+          raise "duplicated path is generated. use %{move_index} in move_to: path = #{move_to}"
+        end
+
+        i += 1
+        previous_path = move_to
+      end while @bucket.object(move_to).exists?
+
+      log.warn "#{s3path} already exists, move to #{move_to}"
+      begin
+        @bucket.object(s3path).move_to(@bucket.object(move_to))
+      rescue => e
+        raise "move_to failed (cause: #{e.class} #{e.message}). please make sure permission, etc: path = #{move_to}"
+      end
+    end
 
     # tsuffix is the one which file buffer filename has
     def tsuffix(chunk)

@@ -109,6 +109,16 @@ class S3OutputTest < Test::Unit::TestCase
     end
   end
 
+  def test_configure_with_move_to
+    conf = CONFIG.clone
+    assert_raise Fluent::ConfigError do
+      create_driver(conf + "\noverwrite true\nmove_to log/%Y/%m/%d\n")
+    end
+    assert_nothing_raised do
+      create_driver(conf + "\nmove_to log/%Y/%m/%d\n")
+    end
+  end
+
   def test_path_slicing
     config = CONFIG.clone.gsub(/path\slog/, "path log/%Y/%m/%d")
     d = create_driver(config)
